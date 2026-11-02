@@ -1,0 +1,407 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+</head>
+<body>
+<title>صحّح تلاوتك</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Amiri+Quran&family=Readex+Pro:wght@400;500;600;700&display=swap">
+<style>
+/* Layout: one narrow column; a framed mushaf page is the hero of every surah screen, controls dock beneath it */
+:root{
+  --paper:#f6f8f3; --page:#ffffff; --ink:#1c2a25; --muted:#5d6f68; --line:#d9e2dc;
+  --accent:#0f6b5c; --accent-ink:#ffffff; --accent-soft:#e2f0ec;
+  --gold:#a8823a; --gold-soft:#efe6d2;
+  --bad:#c0392b; --bad-soft:#fbe9e6; --good:#1e7a46; --good-soft:#e3f3e9;
+  --f-quran:"Amiri Quran","Amiri","Traditional Arabic",serif;
+  --f-ui:"Readex Pro","Segoe UI","Tahoma",sans-serif;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --paper:#111815; --page:#18211d; --ink:#e6eee9; --muted:#9aaca4; --line:#2c3a34;
+  --accent:#3fb59c; --accent-ink:#06231d; --accent-soft:#1c3a33;
+  --gold:#c9a55e; --gold-soft:#2e2919;
+  --bad:#ff7a6b; --bad-soft:#3a1f1b; --good:#5fcf8c; --good-soft:#173324; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --paper:#111815; --page:#18211d; --ink:#e6eee9; --muted:#9aaca4; --line:#2c3a34;
+  --accent:#3fb59c; --accent-ink:#06231d; --accent-soft:#1c3a33;
+  --gold:#c9a55e; --gold-soft:#2e2919;
+  --bad:#ff7a6b; --bad-soft:#3a1f1b; --good:#5fcf8c; --good-soft:#173324; color-scheme:dark}
+*{box-sizing:border-box}
+html{direction:rtl}
+body{background:var(--paper);color:var(--ink);font-family:var(--f-ui);font-size:16px;line-height:1.6;
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:16px 40px}
+.wrap{max-width:560px;margin:0 auto;display:flex;flex-direction:column;gap:18px}
+header.top{display:flex;align-items:center;justify-content:space-between;gap:12px}
+.brand{display:flex;align-items:center;gap:10px}
+.brand svg{flex:none}
+.brand b{font-size:1.15rem;font-weight:700;letter-spacing:0}
+.brand small{display:block;color:var(--muted);font-size:.78rem;font-weight:400}
+.linkbtn{background:none;border:0;color:var(--accent);font:inherit;font-size:.9rem;cursor:pointer;padding:6px 4px}
+h1,h2{text-wrap:balance;margin:0}
+h1{font-size:1.4rem}
+h2{font-size:1.1rem}
+p{margin:0}
+.muted{color:var(--muted)}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;border-radius:12px;border:1px solid var(--line);
+  background:var(--page);color:var(--ink);font:inherit;font-weight:500;padding:12px 16px;cursor:pointer;min-height:48px}
+.btn.primary{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
+.btn.rec{background:var(--bad);border-color:var(--bad);color:#fff}
+.btn:disabled{opacity:.45;cursor:not-allowed}
+.btn:focus-visible,.linkbtn:focus-visible,input:focus-visible,textarea:focus-visible,.surah:focus-visible,.w:focus-visible{outline:3px solid var(--gold);outline-offset:2px}
+.row{display:flex;gap:10px;flex-wrap:wrap}
+.row .btn{flex:1 1 140px}
+input[type=text],textarea{width:100%;font:inherit;padding:12px 14px;border-radius:12px;border:1px solid var(--line);background:var(--page);color:var(--ink)}
+textarea{min-height:110px;resize:vertical}
+.card{background:var(--page);border:1px solid var(--line);border-radius:16px;padding:18px;display:flex;flex-direction:column;gap:14px}
+
+/* surah list */
+.list{display:flex;flex-direction:column;gap:10px}
+.surah{display:flex;align-items:center;gap:14px;background:var(--page);border:1px solid var(--line);border-radius:14px;padding:14px 16px;cursor:pointer;text-align:right;font:inherit;color:inherit;width:100%}
+.surah .num{width:40px;height:40px;flex:none;display:grid;place-items:center;border:1.5px solid var(--gold);color:var(--gold);border-radius:50%;font-weight:600;font-variant-numeric:tabular-nums}
+.surah .nm{flex:1;min-width:0}
+.surah .nm b{font-family:var(--f-quran);font-size:1.45rem;font-weight:400;line-height:1.3;display:block}
+.surah .nm span{font-size:.82rem;color:var(--muted)}
+.pill{font-size:.78rem;padding:4px 10px;border-radius:99px;white-space:nowrap}
+.pill.ok{background:var(--good-soft);color:var(--good)}
+.pill.lock{background:var(--line);color:var(--muted)}
+.pill.go{background:var(--accent-soft);color:var(--accent)}
+.surah[aria-disabled="true"]{cursor:not-allowed;opacity:.7}
+
+/* steps */
+.steps{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;list-style:none;margin:0;padding:0}
+.steps li{display:flex;flex-direction:column;align-items:center;gap:4px;font-size:.8rem;color:var(--muted)}
+.steps li i{font-style:normal;width:30px;height:30px;border-radius:50%;display:grid;place-items:center;border:1.5px solid var(--line);font-weight:600;background:var(--page)}
+.steps li.on{color:var(--ink);font-weight:600}
+.steps li.on i{border-color:var(--accent);background:var(--accent);color:var(--accent-ink)}
+.steps li.done i{border-color:var(--accent);color:var(--accent)}
+
+/* mushaf page */
+.mushaf{background:var(--page);border:2px solid var(--gold);border-radius:6px;padding:5px;box-shadow:0 1px 0 var(--line)}
+.mushaf-in{border:1px solid var(--gold);border-radius:3px;padding:14px 14px 18px}
+.sname{text-align:center;background:var(--gold-soft);border:1px solid var(--gold);border-radius:3px;font-family:var(--f-quran);font-size:1.5rem;line-height:1.7;margin-bottom:10px;color:var(--ink)}
+.ayat{font-family:var(--f-quran);font-size:1.75rem;line-height:2.5;text-align:justify;text-align-last:center;word-spacing:2px}
+.ayah{border-radius:6px;transition:background .25s}
+.ayah.playing{background:var(--accent-soft)}
+.w{display:inline;padding:0 1px;border-radius:4px;cursor:default}
+.w.wrong{text-decoration:underline wavy var(--bad);text-decoration-thickness:2px;text-underline-offset:10px;color:var(--bad);cursor:pointer}
+.w.missing{color:transparent;outline:2px dashed var(--bad);outline-offset:-4px;background:var(--bad-soft);cursor:pointer}
+.w.missing.show{color:var(--muted)}
+.w.ok{color:var(--good)}
+.mark{display:inline-grid;place-items:center;width:1.5em;height:1.5em;font-family:var(--f-ui);font-size:.55em;font-weight:600;color:var(--gold);border:1.5px solid var(--gold);border-radius:50%;margin:0 4px;vertical-align:middle;line-height:1}
+.hint{font-size:.85rem;color:var(--muted);text-align:center}
+
+/* panels */
+.live{min-height:52px;padding:10px 12px;border-radius:12px;background:var(--paper);border:1px dashed var(--line);font-size:1rem;color:var(--muted)}
+.dot{width:10px;height:10px;border-radius:50%;background:#fff;display:inline-block;animation:pulse 1s infinite}
+@keyframes pulse{50%{opacity:.25}}
+@media (prefers-reduced-motion: reduce){.dot{animation:none}.ayah{transition:none}}
+.toggle{display:flex;align-items:center;gap:8px;font-size:.92rem;color:var(--muted)}
+.toggle input{width:20px;height:20px;accent-color:var(--accent)}
+.result{display:flex;flex-direction:column;align-items:center;gap:6px;text-align:center;padding:6px 0}
+.badge{font-size:1.5rem;font-weight:700;padding:8px 22px;border-radius:99px}
+.badge.pass{background:var(--good-soft);color:var(--good)}
+.badge.fail{background:var(--bad-soft);color:var(--bad)}
+.stats{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;width:100%}
+.stat{border:1px solid var(--line);border-radius:12px;padding:10px 6px;text-align:center}
+.stat b{display:block;font-size:1.35rem;font-variant-numeric:tabular-nums}
+.stat span{font-size:.78rem;color:var(--muted)}
+.legend{display:flex;gap:16px;flex-wrap:wrap;justify-content:center;font-size:.82rem;color:var(--muted)}
+.legend .sw{display:inline-block;width:22px;height:12px;vertical-align:middle;margin-left:6px;border-radius:3px}
+.note{font-size:.88rem;padding:10px 12px;border-radius:12px;background:var(--gold-soft);color:var(--ink)}
+.tip{font-size:.92rem;padding:10px 12px;border-radius:12px;background:var(--bad-soft);color:var(--ink)}
+</style>
+
+<div class="wrap" id="app">
+  <header class="top">
+    <div class="brand">
+      <svg width="38" height="38" viewBox="0 0 40 40" aria-hidden="true"><path d="M20 3 L24 9 L31 8 L31 15 L37 19 L32 24 L34 31 L27 31 L23 37 L20 33 L17 37 L13 31 L6 31 L8 24 L3 19 L9 15 L9 8 L16 9 Z" fill="none" stroke="var(--gold)" stroke-width="1.6"/><circle cx="20" cy="20" r="7" fill="var(--accent)"/></svg>
+      <div><b>صحّح تلاوتك</b><small>استمع، اقرأ، وصحّح</small></div>
+    </div>
+    <button class="linkbtn" id="homeBtn" hidden>السور</button>
+  </header>
+  <main id="view"></main>
+</div>
+
+<script>
+/*CORE*/
+const SURAHS = [
+  {id:1, name:"سورة الفاتحة", ayat:[
+    "بِسْمِ اللَّهِ الرَّحْمَٰنِ الرَّحِيمِ",
+    "الْحَمْدُ لِلَّهِ رَبِّ الْعَالَمِينَ",
+    "الرَّحْمَٰنِ الرَّحِيمِ",
+    "مَالِكِ يَوْمِ الدِّينِ",
+    "إِيَّاكَ نَعْبُدُ وَإِيَّاكَ نَسْتَعِينُ",
+    "اهْدِنَا الصِّرَاطَ الْمُسْتَقِيمَ",
+    "صِرَاطَ الَّذِينَ أَنْعَمْتَ عَلَيْهِمْ غَيْرِ الْمَغْضُوبِ عَلَيْهِمْ وَلَا الضَّالِّينَ"]},
+  {id:114, name:"سورة الناس", ayat:[
+    "قُلْ أَعُوذُ بِرَبِّ النَّاسِ","مَلِكِ النَّاسِ","إِلَٰهِ النَّاسِ",
+    "مِن شَرِّ الْوَسْوَاسِ الْخَنَّاسِ","الَّذِي يُوَسْوِسُ فِي صُدُورِ النَّاسِ","مِنَ الْجِنَّةِ وَالنَّاسِ"]},
+  {id:113, name:"سورة الفلق", ayat:[
+    "قُلْ أَعُوذُ بِرَبِّ الْفَلَقِ","مِن شَرِّ مَا خَلَقَ","وَمِن شَرِّ غَاسِقٍ إِذَا وَقَبَ",
+    "وَمِن شَرِّ النَّفَّاثَاتِ فِي الْعُقَدِ","وَمِن شَرِّ حَاسِدٍ إِذَا حَسَدَ"]},
+  {id:112, name:"سورة الإخلاص", ayat:[
+    "قُلْ هُوَ اللَّهُ أَحَدٌ","اللَّهُ الصَّمَدُ","لَمْ يَلِدْ وَلَمْ يُولَدْ","وَلَمْ يَكُن لَّهُ كُفُوًا أَحَدٌ"]},
+  {id:108, name:"سورة الكوثر", ayat:[
+    "إِنَّا أَعْطَيْنَاكَ الْكَوْثَرَ","فَصَلِّ لِرَبِّكَ وَانْحَرْ","إِنَّ شَانِئَكَ هُوَ الْأَبْتَرُ"]}
+];
+
+// Normalise Arabic for comparison: strip diacritics, unify letter forms
+function norm(w){
+  return (w||"")
+    .replace(/[ؐ-ًؚ-ٰٟۖ-ۭـ]/g,"")
+    .replace(/[أإآٱ]/g,"ا").replace(/ى/g,"ي").replace(/ة/g,"ه")
+    .replace(/ؤ/g,"و").replace(/ئ/g,"ي").replace(/[^ء-ي]/g,"");
+}
+function loose(w){ return w.replace(/(?!^)ا/g,""); }
+function lev(a,b){
+  const m=a.length,n=b.length; if(!m) return n; if(!n) return m;
+  let p=Array.from({length:n+1},(_,j)=>j);
+  for(let i=1;i<=m;i++){const c=[i];for(let j=1;j<=n;j++){c[j]=Math.min(p[j]+1,c[j-1]+1,p[j-1]+(a[i-1]===b[j-1]?0:1));}p=c;}
+  return p[n];
+}
+function same(a,b){ return a===b || loose(a)===loose(b); }
+
+// Word-level alignment of the reference text with what was heard
+function compare(refWords, heardText){
+  const R=refWords.map(norm);
+  const H=(heardText||"").split(/\s+/).map(norm).filter(Boolean);
+  const n=R.length,m=H.length, INS=0.4, DEL=1;
+  const D=[...Array(n+1)].map(()=>new Array(m+1).fill(0));
+  const B=[...Array(n+1)].map(()=>new Array(m+1).fill(""));
+  for(let i=1;i<=n;i++){D[i][0]=i*DEL;B[i][0]="d";}
+  for(let j=1;j<=m;j++){D[0][j]=j*INS;B[0][j]="i";}
+  for(let i=1;i<=n;i++)for(let j=1;j<=m;j++){
+    const a=R[i-1],b=H[j-1];
+    let s; if(same(a,b)) s=0; else { const sim=1-lev(a,b)/Math.max(a.length,b.length); s= sim>=0.5?0.6:1.3; }
+    const opts=[[D[i-1][j-1]+s,"s"],[D[i-1][j]+DEL,"d"],[D[i][j-1]+INS,"i"]];
+    opts.sort((x,y)=>x[0]-y[0]); D[i][j]=opts[0][0]; B[i][j]=opts[0][1];
+  }
+  const out=new Array(n); let i=n,j=m;
+  while(i>0||j>0){
+    const op=B[i][j];
+    if(op==="s"){ out[i-1]= same(R[i-1],H[j-1])?{st:"ok"}:{st:"wrong",heard:H[j-1]}; i--; j--; }
+    else if(op==="d"){ out[i-1]={st:"missing"}; i--; }
+    else { j--; }
+  }
+  const ok=out.filter(x=>x.st==="ok").length, wrong=out.filter(x=>x.st==="wrong").length, missing=out.filter(x=>x.st==="missing").length;
+  // Pass rule: no skipped words, and at most one word flagged (allowance for speech-recognition slips)
+  return {words:out, ok, wrong, missing, total:n, pass: missing===0 && wrong<=1};
+}
+/*ENDCORE*/
+
+const AUDIO_BASE="https://everyayah.com/data/Alafasy_128kbps/";
+const pad=(x,l)=>String(x).padStart(l,"0");
+const AR=d=>String(d).replace(/\d/g,c=>"٠١٢٣٤٥٦٧٨٩"[c]);
+const store={
+  get(k,f){try{const v=localStorage.getItem("tilawa:"+k);return v==null?f:JSON.parse(v);}catch(e){return f;}},
+  set(k,v){try{localStorage.setItem("tilawa:"+k,JSON.stringify(v));}catch(e){}}
+};
+const state={user:store.get("user",""), passed:store.get("passed",[]), surah:null, step:1, listened:false, result:null};
+const view=document.getElementById("view"), homeBtn=document.getElementById("homeBtn");
+const SR=window.SpeechRecognition||window.webkitSpeechRecognition;
+let micBlocked=!SR;
+const audio=new Audio(); audio.preload="none";
+let playIdx=-1, playSingle=false, rec=null, listening=false, heard="", heardSegs=[];
+
+homeBtn.onclick=()=>{stopAll();renderHome();};
+function esc(s){return s.replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));}
+function stopAll(){ audio.pause(); playIdx=-1; if(rec){listening=false;try{rec.stop();}catch(e){}} }
+function isUnlocked(s){ return s.id===1 || state.passed.includes(1); }
+
+function renderRegister(){
+  homeBtn.hidden=true;
+  view.innerHTML=`<div class="card">
+    <h1>أهلًا بك</h1>
+    <p class="muted">سجّل اسمك لنحفظ تقدّمك. تبدأ بسورة الفاتحة، وبعد اجتيازها تنفتح لك بقية السور.</p>
+    <form id="reg" class="row" style="flex-direction:column">
+      <label for="nm">الاسم</label>
+      <input type="text" id="nm" autocomplete="name" placeholder="مثال: عبدالله محمد" required>
+      <button class="btn primary" type="submit">ابدأ</button>
+    </form></div>`;
+  document.getElementById("reg").onsubmit=e=>{e.preventDefault();const v=document.getElementById("nm").value.trim();if(!v)return;state.user=v;store.set("user",v);renderHome();};
+}
+
+function renderHome(){
+  homeBtn.hidden=true;
+  const fatihaDone=state.passed.includes(1);
+  view.innerHTML=`<div class="wrap" style="gap:14px">
+    <div><h1>السلام عليكم، ${esc(state.user)}</h1>
+    <p class="muted">${fatihaDone?"أحسنت، اجتزت سورة الفاتحة. اختر السورة التالية.":"ابدأ بسورة الفاتحة. لن تنفتح بقية السور حتى تجتازها."}</p></div>
+    <div class="list">${SURAHS.map(s=>{
+      const done=state.passed.includes(s.id), open=isUnlocked(s);
+      const pill= done?'<span class="pill ok">مجتازة</span>': open?'<span class="pill go">ابدأ</span>':'<span class="pill lock">مقفلة</span>';
+      return `<button class="surah" data-id="${s.id}" aria-disabled="${!open}">
+        <span class="num">${AR(s.id)}</span>
+        <span class="nm"><b>${s.name}</b><span>${AR(s.ayat.length)} آيات</span></span>${pill}</button>`;}).join("")}
+    </div>
+    <button class="linkbtn" id="logout" style="align-self:center">تغيير الاسم</button></div>`;
+  view.querySelectorAll(".surah").forEach(b=>b.onclick=()=>{
+    const s=SURAHS.find(x=>x.id==b.dataset.id);
+    if(!isUnlocked(s)){ toastLocked(b); return; }
+    openSurah(s);
+  });
+  document.getElementById("logout").onclick=()=>{state.user="";store.set("user","");renderRegister();};
+}
+function toastLocked(b){ const p=b.querySelector(".pill"); p.textContent="اجتز الفاتحة أولًا"; setTimeout(()=>p.textContent="مقفلة",1800); }
+
+function openSurah(s){ state.surah=s; state.step=1; state.listened=false; state.result=null; heard=""; renderSurah(); }
+
+function mushafHTML(s, res){
+  let k=0;
+  const body=s.ayat.map((a,ai)=>{
+    const ws=a.split(" ").map(w=>{const r=res?res.words[k]:null; const idx=k++;
+      const cls=r?(" "+r.st):""; const tip=r&&r.st==="wrong"?` title="سُمعت: ${esc(r.heard)}" data-heard="${esc(r.heard)}" tabindex="0"`:(r&&r.st==="missing"?' tabindex="0" title="كلمة متروكة، اضغط لإظهارها"':"");
+      return `<span class="w${cls}" data-i="${idx}"${tip}>${w}</span>`;}).join(" ");
+    return `<span class="ayah" data-a="${ai}">${ws}<span class="mark">${AR(ai+1)}</span></span>`;
+  }).join(" ");
+  return `<div class="mushaf"><div class="mushaf-in"><div class="sname">${s.name}</div><div class="ayat" id="ayat">${body}</div></div></div>`;
+}
+
+function stepsHTML(){
+  const L=["استمع","اقرأ","النتيجة"];
+  return `<ol class="steps">${L.map((t,i)=>`<li class="${state.step===i+1?"on":state.step>i+1?"done":""}"><i>${AR(i+1)}</i>${t}</li>`).join("")}</ol>`;
+}
+
+function renderSurah(){
+  homeBtn.hidden=false;
+  const s=state.surah;
+  let panel="";
+  if(state.step===1){
+    panel=`<div class="card">
+      <h2>استمع إلى السورة</h2>
+      <p class="muted">استمع جيدًا، ويمكنك التكرار أو الضغط على أي آية لسماعها وحدها.</p>
+      <div class="row"><button class="btn primary" id="play">▶ تشغيل السورة</button><button class="btn" id="stop">إيقاف</button></div>
+      <label class="toggle"><input type="checkbox" id="loop"> تكرار تلقائي</label>
+      <p class="note" id="aErr" hidden>تعذّر تشغيل الصوت هنا. افتح التطبيق من رابطه الخاص على الجوال ليعمل الصوت. يمكنك المتابعة الآن.</p>
+      <button class="btn primary" id="next" ${state.listened?"":"disabled"}>انتقل إلى القراءة</button>
+      <p class="hint" id="nextHint">${state.listened?"":"يُفتح زر القراءة بعد الاستماع للسورة كاملة مرة واحدة"}</p>
+    </div>`;
+  } else if(state.step===2){
+    panel = micBlocked ? `<div class="card">
+      <h2>اقرأ السورة</h2>
+      <p class="note">الميكروفون غير متاح في هذه الصفحة. للتجربة الآن اكتب ما قرأته، وسيعمل التسجيل بالصوت عند فتح التطبيق من رابطه الخاص على الجوال.</p>
+      <label for="typed">ما قرأته</label>
+      <textarea id="typed" placeholder="مثال: بسم الله الرحمن الرحيم الحمد لله رب العالمين ..."></textarea>
+      <div class="row"><button class="btn primary" id="check">صحّح قراءتي</button><button class="btn" id="back1">العودة للاستماع</button></div>
+    </div>` : `<div class="card">
+      <h2>اقرأ السورة بصوتك</h2>
+      <p class="muted">اضغط «ابدأ القراءة» واقرأ السورة كاملة بصوت واضح، ثم اضغط «انتهيت».</p>
+      <div class="live" id="live">سيظهر هنا ما يسمعه التطبيق…</div>
+      <div class="row"><button class="btn primary" id="recBtn">🎙 ابدأ القراءة</button><button class="btn" id="back1">العودة للاستماع</button></div>
+    </div>`;
+  } else {
+    const r=state.result, i=SURAHS.indexOf(s), nxt=SURAHS[i+1];
+    panel=`<div class="card"><div class="result">
+      <span class="badge ${r.pass?"pass":"fail"}">${r.pass?"مجتاز":"تجب الإعادة"}</span>
+      <p class="muted">${r.pass?"قراءة موفقة، بارك الله فيك.":(s.id===1?"لن تنتقل إلى سورة أخرى حتى تجتاز الفاتحة. راجع المواضع المعلّمة ثم أعد القراءة.":"راجع المواضع المعلّمة ثم أعد القراءة.")}</p>
+      <div class="stats">
+        <div class="stat"><b style="color:var(--good)">${AR(r.ok)}</b><span>صحيحة</span></div>
+        <div class="stat"><b style="color:var(--bad)">${AR(r.wrong)}</b><span>خاطئة</span></div>
+        <div class="stat"><b style="color:var(--bad)">${AR(r.missing)}</b><span>متروكة</span></div>
+      </div></div>
+      <div class="legend"><span><i class="sw" style="border-bottom:3px solid var(--bad)"></i>كلمة خاطئة</span><span><i class="sw" style="outline:2px dashed var(--bad);outline-offset:-2px;background:var(--bad-soft)"></i>كلمة متروكة</span></div>
+      <p class="tip" id="wtip" hidden></p>
+      <div class="row">
+        <button class="btn primary" id="again">أعد القراءة</button>
+        <button class="btn" id="relisten">استمع مرة أخرى</button>
+      </div>
+      ${r.pass?`<button class="btn primary" id="goNext">${nxt?"انتقل إلى "+nxt.name:"العودة إلى السور"}</button>`:""}
+    </div>`;
+  }
+  view.innerHTML=`<div class="wrap" style="gap:14px">${stepsHTML()}${mushafHTML(s,state.step===3?state.result:null)}${panel}</div>`;
+  bindSurah();
+}
+
+function bindSurah(){
+  const $=id=>document.getElementById(id);
+  const ayat=$("ayat");
+  if(state.step===1){
+    $("play").onclick=()=>{playSingle=false;playAyah(0);};
+    $("stop").onclick=()=>{audio.pause();markPlaying(-1);playIdx=-1;};
+    $("next").onclick=()=>{audio.pause();markPlaying(-1);state.step=2;renderSurah();};
+    ayat.querySelectorAll(".ayah").forEach(a=>{a.style.cursor="pointer";a.onclick=()=>{playSingle=true;playAyah(+a.dataset.a);};});
+  } else if(state.step===2){
+    $("back1").onclick=()=>{stopAll();state.step=1;renderSurah();};
+    if(micBlocked){ $("check").onclick=()=>finish($("typed").value); }
+    else $("recBtn").onclick=toggleRec;
+  } else {
+    $("again").onclick=()=>{state.step=2;heard="";renderSurah();};
+    $("relisten").onclick=()=>{state.step=1;renderSurah();};
+    const g=$("goNext"); if(g) g.onclick=()=>{const i=SURAHS.indexOf(state.surah),n=SURAHS[i+1]; n?openSurah(n):renderHome();};
+    ayat.querySelectorAll(".w.wrong,.w.missing").forEach(w=>{
+      const show=()=>{ const t=$("wtip"); t.hidden=false;
+        if(w.classList.contains("missing")){ w.classList.add("show"); t.textContent="تركتَ كلمة: «"+w.textContent+"»"; }
+        else t.textContent="الصواب: «"+w.textContent+"» — وسمعها التطبيق: «"+w.dataset.heard+"»"; };
+      w.onclick=show; w.onkeydown=e=>{if(e.key==="Enter"||e.key===" "){e.preventDefault();show();}};
+    });
+  }
+}
+
+function markPlaying(i){ document.querySelectorAll(".ayah").forEach(a=>a.classList.toggle("playing",+a.dataset.a===i)); }
+function playAyah(i){
+  const s=state.surah; playIdx=i; markPlaying(i);
+  audio.src=AUDIO_BASE+pad(s.id,3)+pad(i+1,3)+".mp3";
+  audio.play().catch(()=>audioFail());
+}
+function audioFail(){ const e=document.getElementById("aErr"); if(e) e.hidden=false; markPlaying(-1); setListened(); }
+function setListened(){ state.listened=true; const n=document.getElementById("next"); if(n){n.disabled=false; document.getElementById("nextHint").textContent="";} }
+audio.onerror=()=>{ if(playIdx>=0) audioFail(); };
+audio.onended=()=>{
+  if(playIdx<0) return;
+  const s=state.surah, loop=document.getElementById("loop");
+  if(playSingle){ if(loop&&loop.checked) return playAyah(playIdx); markPlaying(-1); playIdx=-1; return; }
+  if(playIdx+1<s.ayat.length) return playAyah(playIdx+1);
+  setListened();
+  if(loop&&loop.checked) return playAyah(0);
+  markPlaying(-1); playIdx=-1;
+};
+
+function toggleRec(){
+  const btn=document.getElementById("recBtn"), live=document.getElementById("live");
+  if(listening){ listening=false; btn.disabled=true; btn.textContent="جارٍ التصحيح…"; try{rec.stop();}catch(e){ finish(heard); } return; }
+  heard=""; heardSegs=[]; listening=true;
+  btn.className="btn rec"; btn.innerHTML='<span class="dot"></span> انتهيت';
+  live.textContent="أنا أستمع… اقرأ الآن";
+  startRec(live);
+}
+function startRec(live){
+  rec=new SR(); rec.lang="ar-SA"; rec.continuous=true; rec.interimResults=true;
+  let sessionFinal=[];
+  rec.onresult=e=>{
+    let interim="";
+    for(let i=e.resultIndex;i<e.results.length;i++){
+      const t=e.results[i][0].transcript;
+      if(e.results[i].isFinal) sessionFinal[i]=t; else interim+=" "+t;
+    }
+    heard=(heardSegs.join(" ")+" "+sessionFinal.filter(Boolean).join(" ")).trim();
+    live.textContent=(heard+" "+interim).trim()||"أنا أستمع… اقرأ الآن";
+  };
+  rec.onerror=e=>{
+    if(e.error==="not-allowed"||e.error==="service-not-allowed"||e.error==="audio-capture"){
+      listening=false; micBlocked=true; rec.onend=null; renderSurah();
+    }
+  };
+  rec.onend=()=>{
+    heardSegs.push(sessionFinal.filter(Boolean).join(" "));
+    if(listening){ try{ startRec(live); }catch(e){ listening=false; finish(heard); } }
+    else finish(heardSegs.join(" "));
+  };
+  try{ rec.start(); }catch(e){ listening=false; micBlocked=true; renderSurah(); }
+}
+
+function finish(text){
+  const words=state.surah.ayat.join(" ").split(" ");
+  const r=compare(words,text);
+  state.result=r; state.step=3;
+  if(r.pass && !state.passed.includes(state.surah.id)){ state.passed.push(state.surah.id); store.set("passed",state.passed); }
+  renderSurah(); window.scrollTo({top:0,behavior:"smooth"});
+}
+
+state.user ? renderHome() : renderRegister();
+</script>
+
+</body>
+</html>
